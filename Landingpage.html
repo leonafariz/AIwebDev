@@ -1,0 +1,966 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML Live Viewer</title>
+  <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a0b2e 0%, #16213e 50%, #0f3460 100%);
+            color: #e0e6ff;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            gap: 2px;
+        }
+
+        .workspace {
+            flex: 1;
+            background: rgba(26, 11, 46, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            border-radius: 12px 0 0 12px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .workspace-header {
+            padding: 16px 20px;
+            background: rgba(15, 52, 96, 0.6);
+            border-bottom: 1px solid rgba(96, 165, 250, 0.2);
+            border-radius: 12px 0 0 0;
+        }
+
+        .workspace-logo {
+            height: 32px;
+            width: 160px;
+            object-fit: contain;
+        }
+
+        .code-editor {
+            flex: 1;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            overflow: auto;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .code-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 15px;
+        }
+
+        .prompt-section {
+            background: rgba(96, 165, 250, 0.05);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            border-radius: 16px;
+            padding: 12px;
+            position: relative;
+        }
+
+
+
+        .prompt-input-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .prompt-btn {
+            background: rgba(96, 165, 250, 0.1);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            border-radius: 6px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            height: 36px;
+        }
+
+        .prompt-btn:hover {
+            background: rgba(96, 165, 250, 0.2);
+            border-color: rgba(96, 165, 250, 0.5);
+            box-shadow: 0 0 15px rgba(96, 165, 250, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .prompt-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: #60a5fa;
+            transition: all 0.3s ease;
+        }
+
+        .prompt-btn:hover svg {
+            fill: #7dd3fc;
+            filter: drop-shadow(0 0 5px rgba(125, 211, 252, 0.5));
+        }
+
+        .prompt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .prompt-label {
+            color: #60a5fa;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .prompt-stats {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .line-counter {
+            color: #60a5fa;
+            font-size: 11px;
+            font-weight: 500;
+            opacity: 0.8;
+            display: none;
+        }
+
+        .line-counter.visible {
+            display: block;
+        }
+
+        .typing-timer {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .typing-timer.active {
+            opacity: 1;
+        }
+
+        .typing-timer.completed {
+            opacity: 1;
+        }
+
+        .timer-circle {
+            position: relative;
+            width: 20px;
+            height: 20px;
+        }
+
+        .progress-circle {
+            transition: stroke-dashoffset 0.1s linear;
+        }
+
+        .progress-circle.loading {
+            animation: rotate 1.5s linear infinite;
+            stroke-dasharray: 12.57;
+            stroke-dashoffset: 0;
+            transform-origin: 10px 10px;
+        }
+
+        @keyframes rotate {
+            0% {
+                transform: rotate(-90deg);
+                stroke-dashoffset: 12.57;
+            }
+            50% {
+                transform: rotate(90deg);
+                stroke-dashoffset: 0;
+            }
+            100% {
+                transform: rotate(270deg);
+                stroke-dashoffset: 12.57;
+            }
+        }
+
+        .timer-text {
+            color: #60a5fa;
+            font-size: 11px;
+            font-weight: 600;
+            min-width: 35px;
+        }
+
+        .prompt-input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #e0e6ff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+            resize: none;
+            min-height: 36px;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .prompt-input:focus {
+            border-color: rgba(96, 165, 250, 0.5);
+            box-shadow: 0 0 10px rgba(96, 165, 250, 0.2);
+        }
+
+        .prompt-input::placeholder {
+            color: rgba(224, 230, 255, 0.4);
+        }
+
+
+
+        .code-textarea {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border: none;
+            color: #7dd3fc;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            position: relative;
+            z-index: 2;
+        }
+
+        .code-textarea::placeholder {
+            color: rgba(224, 230, 255, 0.5);
+        }
+
+        .preview-section {
+            flex: 1;
+            background: rgba(15, 52, 96, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            border-radius: 0 12px 12px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .preview-header {
+            padding: 16px 20px;
+            background: rgba(26, 11, 46, 0.6);
+            border-bottom: 1px solid rgba(96, 165, 250, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .preview-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #60a5fa;
+            text-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+        }
+
+        .device-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .zoom-level {
+            color: #60a5fa;
+            font-size: 14px;
+            font-weight: 600;
+            min-width: 45px;
+            text-align: center;
+        }
+
+        .divider {
+            width: 1px;
+            height: 24px;
+            background: rgba(96, 165, 250, 0.3);
+            margin: 0 8px;
+        }
+
+        .device-btn {
+            background: rgba(96, 165, 250, 0.1);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            border-radius: 8px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .device-btn:hover {
+            background: rgba(96, 165, 250, 0.2);
+            border-color: rgba(96, 165, 250, 0.5);
+            box-shadow: 0 0 15px rgba(96, 165, 250, 0.3);
+        }
+
+        .device-btn.active {
+            background: rgba(96, 165, 250, 0.3);
+            border-color: #60a5fa;
+            box-shadow: 0 0 20px rgba(96, 165, 250, 0.4);
+        }
+
+        .device-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: #60a5fa;
+        }
+
+        .preview-container {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.2);
+            overflow: auto;
+        }
+
+        .preview-frame {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .preview-frame.desktop {
+            width: 100%;
+            height: 100%;
+            max-width: 1920px;
+            max-height: 1080px;
+            aspect-ratio: 16/9;
+        }
+
+        .preview-frame.tablet {
+            width: 400px;
+            height: 600px;
+        }
+
+        .preview-frame.mobile {
+            width: 300px;
+            height: 500px;
+        }
+
+        .preview-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 8px;
+        }
+
+        .glow-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(96, 165, 250, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .popup-form {
+            background: rgba(26, 11, 46, 0.95);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            border-radius: 16px;
+            padding: 24px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .popup-title {
+            color: #60a5fa;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            color: #60a5fa;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .form-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            color: #e0e6ff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+            resize: vertical;
+            min-height: 40px;
+        }
+
+        .form-input:focus {
+            border-color: rgba(96, 165, 250, 0.5);
+            box-shadow: 0 0 10px rgba(96, 165, 250, 0.2);
+        }
+
+        .form-input::placeholder {
+            color: rgba(224, 230, 255, 0.4);
+        }
+
+        .form-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 24px;
+        }
+
+        .form-btn {
+            background: rgba(96, 165, 250, 0.1);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            border-radius: 8px;
+            padding: 10px 20px;
+            color: #60a5fa;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .form-btn:hover {
+            background: rgba(96, 165, 250, 0.2);
+            border-color: rgba(96, 165, 250, 0.5);
+            box-shadow: 0 0 15px rgba(96, 165, 250, 0.3);
+        }
+
+        .form-btn.primary {
+            background: rgba(96, 165, 250, 0.2);
+            border-color: #60a5fa;
+        }
+
+        .form-btn.primary:hover {
+            background: rgba(96, 165, 250, 0.3);
+            box-shadow: 0 0 20px rgba(96, 165, 250, 0.4);
+        }
+
+
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .workspace {
+                border-radius: 12px 12px 0 0;
+            }
+            
+            .preview-section {
+                border-radius: 0 0 12px 12px;
+            }
+        }
+    </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
+  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+ </head>
+ <body>
+  <div class="glow-effect"></div>
+  <div class="container">
+   <div class="workspace">
+    <div class="workspace-header"><img src="logo.png" alt="Code Editor" class="workspace-logo">
+    </div>
+    <div class="code-editor">
+     <div class="code-area"><textarea class="code-textarea" id="codeInput" placeholder="<!DOCTYPE html>
+<html>
+<head>
+    <title>My Page</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+    </style>
+</head>
+<body>
+    <h1>Hello World!</h1>
+    <p>Start coding here...</p>
+</body>
+</html>"></textarea>
+     </div>
+     <div class="prompt-section">
+      <div class="prompt-header">
+       <div class="prompt-label">
+        Code Agentic
+       </div>
+       <div class="prompt-stats">
+        <div class="line-counter" id="lineCounter">
+         0 baris
+        </div>
+        <div class="typing-timer" id="typingTimer">
+         <div class="timer-circle" id="timerCircle">
+          <svg width="20" height="20" viewbox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="rgba(96, 165, 250, 0.2)" stroke-width="2" /> <circle cx="10" cy="10" r="8" fill="none" stroke="#60a5fa" stroke-width="2" stroke-dasharray="50.27" stroke-dashoffset="50.27" transform="rotate(-90 10 10)" class="progress-circle" />
+          </svg>
+         </div><span class="timer-text" id="timerText">0.00s</span>
+        </div>
+       </div>
+      </div>
+      <div class="prompt-input-container"><button class="prompt-btn" id="sparkBtn">
+        <svg viewbox="0 0 24 24"><path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z" /> <path d="M19 15L20.09 18.26L24 19L20.09 19.74L19 23L17.91 19.74L14 19L17.91 18.26L19 15Z" /> <path d="M5 9L6.09 12.26L10 13L6.09 13.74L5 17L3.91 13.74L0 13L3.91 12.26L5 9Z" />
+        </svg></button> <textarea class="prompt-input" id="promptInput" placeholder="Describe what you want to create or modify..." rows="1"></textarea> <button class="prompt-btn" id="sendBtn">
+        <svg viewbox="0 0 24 24"><path d="M2.01 21L23 12L2.01 3L2 10L17 12L2 14L2.01 21Z" />
+        </svg></button>
+      </div>
+     </div>
+    </div>
+   </div>
+   <div class="preview-section">
+    <div class="preview-header">
+     <h2 class="preview-title">Live Preview</h2>
+     <div class="device-controls"><button class="device-btn" id="zoomOutBtn" onclick="zoomOut()">
+       <svg viewbox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" /> <path d="M7 9h5v1H7z" />
+       </svg></button> <span class="zoom-level" id="zoomLevel">100%</span> <button class="device-btn" id="zoomInBtn" onclick="zoomIn()">
+       <svg viewbox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" /> <path d="M12 10h-2v2H9v-2H7V9h2V7h1v2h2v1z" />
+       </svg></button>
+      <div class="divider"></div><button class="device-btn active" id="desktopBtn" onclick="switchDevice('desktop')">
+       <svg viewbox="0 0 24 24"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7l-2 3v1h8v-1l-2-3h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H3V4h18v10z" />
+       </svg></button> <button class="device-btn" id="tabletBtn" onclick="switchDevice('tablet')">
+       <svg viewbox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z" />
+       </svg></button> <button class="device-btn" id="mobileBtn" onclick="switchDevice('mobile')">
+       <svg viewbox="0 0 24 24"><path d="M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 18H7V5h10v14z" />
+       </svg></button>
+     </div>
+    </div>
+    <div class="preview-container">
+     <div class="preview-frame desktop" id="previewFrame"><iframe class="preview-iframe" id="previewIframe"></iframe>
+     </div>
+    </div>
+   </div>
+  </div><!-- Popup Form -->
+  <div class="popup-overlay" id="popupOverlay">
+   <div class="popup-form">
+    <h3 class="popup-title">Suggest Prompt</h3>
+    <div class="form-group"><label class="form-label">Suggest Prompt</label> <textarea class="form-input" id="suggestPromptInput" placeholder="Enter your suggested prompt..." rows="3"></textarea>
+    </div>
+    <div class="form-group"><label class="form-label">Code</label> <textarea class="form-input" id="suggestCodeInput" placeholder="Enter your code..." rows="6"></textarea>
+    </div>
+    <div class="form-buttons"><button class="form-btn" id="cancelBtn">Cancel</button> <button class="form-btn primary" id="saveBtn">Save</button>
+    </div>
+   </div>
+  </div>
+  <script>
+        const codeInput = document.getElementById('codeInput');
+        const previewIframe = document.getElementById('previewIframe');
+        const previewFrame = document.getElementById('previewFrame');
+        const zoomLevelDisplay = document.getElementById('zoomLevel');
+        const sparkBtn = document.getElementById('sparkBtn');
+        const promptInput = document.getElementById('promptInput');
+        const popupOverlay = document.getElementById('popupOverlay');
+        const suggestPromptInput = document.getElementById('suggestPromptInput');
+        const suggestCodeInput = document.getElementById('suggestCodeInput');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const lineCounter = document.getElementById('lineCounter');
+        const typingTimer = document.getElementById('typingTimer');
+        const timerText = document.getElementById('timerText');
+        const progressCircle = document.querySelector('.progress-circle');
+        
+        let currentDevice = 'desktop';
+        let zoomLevel = 100;
+        let savedSuggestPrompt = '';
+        let savedSuggestCode = '';
+        let typingStartTime = 0;
+        let typingInterval = null;
+        let isTyping = false;
+
+        // Update preview in real-time
+        function updatePreview() {
+            const code = codeInput.value;
+            const iframeDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
+            iframeDoc.open();
+            iframeDoc.write(code);
+            iframeDoc.close();
+            
+            // Auto scroll to bottom after content loads
+            previewIframe.onload = function() {
+                try {
+                    const iframeWindow = previewIframe.contentWindow;
+                    if (iframeWindow) {
+                        // Scroll to bottom immediately without animation
+                        iframeWindow.scrollTo(0, iframeWindow.document.body.scrollHeight);
+                    }
+                } catch (e) {
+                    // Handle cross-origin issues silently
+                }
+            };
+        }
+
+        // Timer and counter functions
+        function startTypingTimer() {
+            if (!isTyping) {
+                isTyping = true;
+                typingStartTime = Date.now();
+                typingTimer.classList.add('active');
+                typingTimer.classList.remove('completed');
+                progressCircle.classList.add('loading');
+                lineCounter.classList.add('visible');
+                
+                typingInterval = setInterval(() => {
+                    const elapsed = (Date.now() - typingStartTime) / 1000;
+                    timerText.textContent = elapsed.toFixed(2) + 's';
+                }, 10);
+            }
+        }
+
+        function stopTypingTimer() {
+            if (isTyping) {
+                isTyping = false;
+                clearInterval(typingInterval);
+                progressCircle.classList.remove('loading');
+                typingTimer.classList.remove('active');
+                typingTimer.classList.add('completed');
+                
+                // Update progress circle to show completion (full circle)
+                const circumference = 50.27; // 2 * π * 8
+                progressCircle.style.strokeDashoffset = '0';
+            }
+        }
+
+        function resetTimer() {
+            typingTimer.classList.remove('active', 'completed');
+            progressCircle.classList.remove('loading');
+            progressCircle.style.strokeDashoffset = '50.27';
+            timerText.textContent = '0.00s';
+            lineCounter.classList.remove('visible');
+        }
+
+        function updateLineCounter() {
+            const lines = codeInput.value.split('\n').length;
+            lineCounter.textContent = lines + ' baris';
+        }
+
+        // Zoom functions
+        function zoomIn() {
+            if (zoomLevel < 200) {
+                zoomLevel += 25;
+                updateZoom();
+            }
+        }
+
+        function zoomOut() {
+            if (zoomLevel > 50) {
+                zoomLevel -= 25;
+                updateZoom();
+            }
+        }
+
+        function updateZoom() {
+            const scale = zoomLevel / 100;
+            previewFrame.style.transform = `scale(${scale})`;
+            previewFrame.style.transformOrigin = 'center center';
+            
+            // Adjust container to fit scaled content
+            if (scale < 1) {
+                previewFrame.style.margin = 'auto';
+            } else {
+                previewFrame.style.margin = '0';
+            }
+            
+            zoomLevelDisplay.textContent = zoomLevel + '%';
+        }
+
+        // Switch device view
+        function switchDevice(device) {
+            // Remove active class from all buttons
+            document.querySelectorAll('.device-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Add active class to clicked button
+            document.getElementById(device + 'Btn').classList.add('active');
+            
+            // Update preview frame class
+            previewFrame.className = `preview-frame ${device}`;
+            currentDevice = device;
+        }
+
+        // Listen for code changes
+        codeInput.addEventListener('input', function() {
+            updatePreview();
+            updateLineCounter();
+        });
+
+        // Initialize with empty code editor
+        codeInput.value = '';
+        updateLineCounter();
+
+        // Initial preview update
+        updatePreview();
+
+        // Sparkle button functionality
+        sparkBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            // Left click - insert saved prompt or default
+            if (savedSuggestPrompt) {
+                promptInput.value = savedSuggestPrompt;
+            } else {
+                promptInput.value = 'Make it responsive';
+            }
+            autoResize();
+        });
+
+        sparkBtn.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            // Right click - show popup form
+            suggestPromptInput.value = savedSuggestPrompt;
+            suggestCodeInput.value = savedSuggestCode;
+            popupOverlay.style.display = 'flex';
+        });
+
+        // Popup form functionality
+        cancelBtn.addEventListener('click', function() {
+            popupOverlay.style.display = 'none';
+        });
+
+        saveBtn.addEventListener('click', function() {
+            savedSuggestPrompt = suggestPromptInput.value.trim();
+            savedSuggestCode = suggestCodeInput.value.trim();
+            popupOverlay.style.display = 'none';
+        });
+
+        // Close popup when clicking overlay
+        popupOverlay.addEventListener('click', function(e) {
+            if (e.target === popupOverlay) {
+                popupOverlay.style.display = 'none';
+            }
+        });
+
+        // Send button functionality
+        const sendBtn = document.getElementById('sendBtn');
+        
+        // Loading messages arrays
+        const loadingMessages = {
+            klasik: [
+                'Loading...',
+                'Please wait...',
+                'Sedang diproses...',
+                'Memuat data...',
+                'Tunggu sebentar...',
+                'Menyiapkan hasil...',
+                'Processing...',
+                'Harap tunggu...'
+            ],
+            analitis: [
+                'Thinking...',
+                'Analyzing request...',
+                'Menganalisis permintaan...',
+                'Menyusun jawaban...',
+                'Mencocokkan data...',
+                'Menghubungkan ke knowledge base...',
+                'Memproses model AI...',
+                'Merangkai respon terbaik...',
+                'Evaluating input...',
+                'Menilai konteks...'
+            ],
+            teknis: [
+                'Generating response...',
+                'Parsing request...',
+                'Running inference...',
+                'Fetching context...',
+                'Compiling output...',
+                'Optimizing response...',
+                'Executing query...',
+                'Decoding prompt...',
+                'Initializing model...'
+            ]
+        };
+        
+        function getRandomMessages() {
+            const categories = ['klasik', 'analitis', 'teknis'];
+            const selectedMessages = [];
+            
+            // Pick one from each category
+            categories.forEach(category => {
+                const messages = loadingMessages[category];
+                const randomIndex = Math.floor(Math.random() * messages.length);
+                selectedMessages.push(messages[randomIndex]);
+            });
+            
+            // Pick 2 more random messages from any category
+            for (let i = 0; i < 2; i++) {
+                const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+                const messages = loadingMessages[randomCategory];
+                const randomIndex = Math.floor(Math.random() * messages.length);
+                const message = messages[randomIndex];
+                
+                // Avoid duplicates
+                if (!selectedMessages.includes(message)) {
+                    selectedMessages.push(message);
+                }
+            }
+            
+            // Shuffle the array
+            return selectedMessages.sort(() => Math.random() - 0.5);
+        }
+        
+        function typeAndEraseMessage(message, callback) {
+            let charIndex = 0;
+            const typeSpeed = 17; // milliseconds per character (3x faster)
+            const eraseSpeed = 10; // milliseconds per character when erasing (3x faster)
+            
+            // Type the message
+            function typeChar() {
+                if (charIndex < message.length) {
+                    codeInput.value += message.charAt(charIndex);
+                    updateLineCounter();
+                    charIndex++;
+                    setTimeout(typeChar, typeSpeed);
+                } else {
+                    // No pause, immediately erase
+                    eraseMessage();
+                }
+            }
+            
+            // Erase the message
+            function eraseMessage() {
+                if (codeInput.value.length > 0) {
+                    codeInput.value = codeInput.value.slice(0, -1);
+                    updateLineCounter();
+                    setTimeout(eraseMessage, eraseSpeed);
+                } else {
+                    // Message fully erased, call callback
+                    if (callback) callback();
+                }
+            }
+            
+            typeChar();
+        }
+        
+        function showLoadingAnimation(callback) {
+            const messages = getRandomMessages();
+            let messageIndex = 0;
+            
+            function processNextMessage() {
+                if (messageIndex < messages.length) {
+                    typeAndEraseMessage(messages[messageIndex], () => {
+                        messageIndex++;
+                        processNextMessage(); // No pause between messages
+                    });
+                } else {
+                    // All loading messages done, proceed to actual code
+                    if (callback) callback();
+                }
+            }
+            
+            processNextMessage();
+        }
+        
+        function typeCode(text, callback) {
+            const words = text.split(/(\s+)/); // Split by whitespace but keep the spaces
+            let wordIndex = 0;
+            const typingSpeed = 80; // milliseconds per 3 words
+            
+            function typeNext3Words() {
+                if (wordIndex < words.length) {
+                    // Type 3 words at once
+                    let wordsToAdd = '';
+                    for (let i = 0; i < 3 && wordIndex < words.length; i++) {
+                        wordsToAdd += words[wordIndex];
+                        wordIndex++;
+                    }
+                    codeInput.value += wordsToAdd;
+                    updateLineCounter();
+                    
+                    // Update preview every few chunks during typing
+                    if (wordIndex % 15 === 0 || wordIndex >= words.length) {
+                        updatePreview();
+                    }
+                    
+                    // Scroll to bottom of textarea
+                    codeInput.scrollTop = codeInput.scrollHeight;
+                    
+                    setTimeout(typeNext3Words, typingSpeed);
+                } else {
+                    // Final preview update when typing is complete
+                    updatePreview();
+                    stopTypingTimer();
+                    if (callback) callback();
+                }
+            }
+            
+            typeNext3Words();
+        }
+        
+        sendBtn.addEventListener('click', function() {
+            // Clear the prompt textarea
+            promptInput.value = '';
+            autoResize();
+            
+            // Reset timer and counter
+            resetTimer();
+            
+            // Clear code editor and start loading animation
+            codeInput.value = '';
+            updateLineCounter();
+            startTypingTimer();
+            
+            // Show loading animation first, then type the actual code
+            showLoadingAnimation(() => {
+                if (savedSuggestCode) {
+                    typeCode(savedSuggestCode);
+                }
+            });
+        });
+
+        // Auto-resize prompt textarea
+        function autoResize() {
+            promptInput.style.height = 'auto';
+            promptInput.style.height = Math.min(promptInput.scrollHeight, 120) + 'px';
+        }
+        
+        promptInput.addEventListener('input', autoResize);
+        promptInput.addEventListener('paste', () => {
+            setTimeout(autoResize, 0);
+        });
+
+
+    </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9aa47e0e353987f3',t:'MTc2NTExNTQzMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
